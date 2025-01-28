@@ -1,19 +1,37 @@
 from datetime import datetime, date, timedelta
 import json
 import os
+import random
 
 class HabitTracker:
     def __init__(self):
         self.habits = {
-            'exercise': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 30},
-            'water': {'type': 'quantity', 'unit': 'glasses', 'daily_goal': 8},
-            'sleep': {'type': 'duration', 'unit': 'hours', 'daily_goal': 8},
-            'meditation': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 10},
-            'reading': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 20},
-            'journaling': {'type': 'boolean', 'unit': None, 'daily_goal': 1}
+            'exercise': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 30, 'emoji': '💪'},
+            'water': {'type': 'quantity', 'unit': 'glasses', 'daily_goal': 8, 'emoji': '💧'},
+            'sleep': {'type': 'duration', 'unit': 'hours', 'daily_goal': 8, 'emoji': '😴'},
+            'meditation': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 10, 'emoji': '🧘'},
+            'reading': {'type': 'duration', 'unit': 'minutes', 'daily_goal': 20, 'emoji': '📚'},
+            'journaling': {'type': 'boolean', 'unit': None, 'daily_goal': 1, 'emoji': '✍️'}
         }
         self.data_file = 'habit_data.json'
         self.load_data()
+        
+        # Motivational messages
+        self.milestone_messages = [
+            "Amazing work! You're building a better you! 🌟",
+            "Look at you go! Your future self thanks you! ⭐",
+            "You're on fire! Keep that momentum going! 🔥",
+            "Incredible dedication! You're making it happen! 💫",
+            "You're crushing it! Every day counts! 💪"
+        ]
+        
+        self.completion_messages = [
+            "Great job! One step closer to your goals! ✨",
+            "Well done! You're making progress! 🎯",
+            "Keep it up! Small steps lead to big changes! 🌱",
+            "Awesome work! You're building great habits! 🚀",
+            "Excellence is a habit, and you're proving it! 🌟"
+        ]
 
     def load_data(self):
         if os.path.exists(self.data_file):
@@ -26,12 +44,28 @@ class HabitTracker:
         with open(self.data_file, 'w') as f:
             json.dump(self.habit_data, f)
 
+    def get_motivation_message(self, streak, is_completion=True):
+        if is_completion:
+            message = random.choice(self.completion_messages)
+        elif streak in [7, 14, 21, 30, 60, 90]:  # Milestone streaks
+            message = f"\n🎉 {streak} DAY STREAK! 🎉\n{random.choice(self.milestone_messages)}"
+        else:
+            message = ""
+        return message
+
     def log_habit(self, habit_name, value):
         today = date.today().isoformat()
         if today not in self.habit_data:
             self.habit_data[today] = {}
         self.habit_data[today][habit_name] = value
         self.save_data()
+        
+        # Get streak and show motivation
+        streak = self.get_streak(habit_name)
+        if value >= self.habits[habit_name]['daily_goal']:
+            print(self.get_motivation_message(streak, is_completion=True))
+            if streak in [7, 14, 21, 30, 60, 90]:
+                print(self.get_motivation_message(streak, is_completion=False))
 
     def get_streak(self, habit_name):
         streak = 0
@@ -47,13 +81,19 @@ class HabitTracker:
                 break
         return streak
 
+    def get_progress_bar(self, value, goal, width=20):
+        filled = int(width * (value / goal))
+        bar = '█' * filled + '░' * (width - filled)
+        percentage = (value / goal) * 100
+        return f"[{bar}] {percentage:.1f}%"
+
     def show_menu(self):
         while True:
-            print("\n=== Habit Tracker ===")
-            print("1. Log a habit")
-            print("2. View today's progress")
-            print("3. View streaks")
-            print("4. Exit")
+            print("\n🌟 === Habit Tracker === 🌟")
+            print("1. 📝 Log a habit")
+            print("2. 📊 View today's progress")
+            print("3. 🔥 View streaks")
+            print("4. 👋 Exit")
             
             choice = input("\nEnter your choice (1-4): ")
             
@@ -64,15 +104,15 @@ class HabitTracker:
             elif choice == '3':
                 self.show_streaks()
             elif choice == '4':
-                print("Goodbye!")
+                print("Keep up the great work! See you tomorrow! 👋")
                 break
             else:
                 print("Invalid choice. Please try again.")
 
     def log_habit_menu(self):
-        print("\nAvailable habits:")
-        for i, habit in enumerate(self.habits.keys(), 1):
-            print(f"{i}. {habit}")
+        print("\n📝 Available habits:")
+        for i, (habit, details) in enumerate(self.habits.items(), 1):
+            print(f"{i}. {details['emoji']} {habit}")
         
         try:
             choice = int(input("\nSelect habit number: ")) - 1
@@ -84,30 +124,36 @@ class HabitTracker:
                 value = float(input(f"Enter {habit_name} value ({self.habits[habit_name]['unit']}): "))
             
             self.log_habit(habit_name, value)
-            print(f"\n{habit_name} logged successfully!")
+            print(f"\n{self.habits[habit_name]['emoji']} {habit_name} logged successfully!")
         except (IndexError, ValueError):
             print("Invalid input. Please try again.")
 
     def show_today_progress(self):
         today = date.today().isoformat()
-        print("\nToday's Progress:")
-        print("-" * 40)
+        print("\n📊 Today's Progress:")
+        print("-" * 50)
         
         if today in self.habit_data:
             for habit, value in self.habit_data[today].items():
                 goal = self.habits[habit]['daily_goal']
                 unit = self.habits[habit]['unit'] or 'completion'
-                status = "✓" if value >= goal else "✗"
-                print(f"{habit}: {value} {unit} / {goal} {unit} {status}")
+                emoji = self.habits[habit]['emoji']
+                status = "✅" if value >= goal else "❌"
+                
+                progress_bar = self.get_progress_bar(value, goal)
+                print(f"{emoji} {habit}: {value} {unit} / {goal} {unit} {status}")
+                print(f"   {progress_bar}")
         else:
-            print("No habits logged today.")
+            print("No habits logged today. Start fresh! 🌱")
 
     def show_streaks(self):
-        print("\nCurrent Streaks:")
-        print("-" * 40)
+        print("\n🔥 Current Streaks:")
+        print("-" * 50)
         for habit in self.habits:
             streak = self.get_streak(habit)
-            print(f"{habit}: {streak} days")
+            emoji = self.habits[habit]['emoji']
+            fire_level = "🔥" * min(5, (streak // 7) + 1)  # More fire emojis for longer streaks
+            print(f"{emoji} {habit}: {streak} days {fire_level}")
 
 if __name__ == "__main__":
     tracker = HabitTracker()
